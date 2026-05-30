@@ -30,8 +30,8 @@
             align-items: center;
             justify-content: flex-start;
             width: 100%;
-            gap: 10px;
             margin-bottom: 20px;
+            gap: 10px;
             flex-wrap: wrap;
         }
 
@@ -79,17 +79,29 @@
             letter-spacing: 2px;
         }
 
+        #board-wrapper {
+            width: 100%;
+            aspect-ratio: 1 / 1;
+            padding: 4px;
+            box-sizing: border-box;
+            border-radius: 8px;
+            background: #2c3e50;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+        }
+
         #board {
             display: grid;
             grid-template-columns: repeat(8, 1fr);
             grid-template-rows: repeat(8, 1fr);
             gap: 2px;
             background-color: #bdc3c7;
-            border: 4px solid #7f8c8d;
             border-radius: 4px;
             padding: 2px;
             width: 100%;
-            aspect-ratio: 1 / 1;
+            height: 100%;
             box-sizing: border-box;
             touch-action: none;
         }
@@ -133,7 +145,10 @@
         </div>
 
         <div id="info-text">-</div>
-        <div id="board"></div>
+        
+        <div id="board-wrapper">
+            <div id="board"></div>
+        </div>
 
         <div class="disclaimer-text">
             Swipe or use Arrow Keys to move.<br>
@@ -157,6 +172,13 @@
         const B_WALL = 0x00000000000000FFn;
         const T_WALL = 0xFF00000000000000n;
 
+        const xpRewards = {
+            easy: 1,
+            medium: 2,
+            hard: 5,
+            impossible: 10
+        };
+
         function initBoard() {
             const board = document.getElementById('board');
             board.innerHTML = "";
@@ -168,6 +190,45 @@
                     board.appendChild(cell);
                 }
             }
+            updateXpRing();
+        }
+
+        function updateXpRing() {
+            let xp = parseInt(localStorage.getItem('kestoXP') || '0');
+            
+            let progress = 0;
+            let activeColor = '';
+            let baseColor = '';
+
+            if (xp < 10) {
+                progress = xp / 10;
+                activeColor = '#00f2fe'; 
+                baseColor = '#2c3e50';   
+            } else if (xp < 100) {
+                progress = (xp - 10) / 90;
+                activeColor = '#ff0844'; 
+                baseColor = '#00f2fe';   
+            } else if (xp < 1000) {
+                progress = (xp - 100) / 900;
+                activeColor = '#F0E426'; 
+                baseColor = '#ff0844';   
+            } else {
+                progress = 1;
+                activeColor = '#F0E426';
+                baseColor = '#F0E426';
+            }
+
+            let degree = progress * 360;
+            let wrapper = document.getElementById('board-wrapper');
+            wrapper.style.background = `conic-gradient(from 0deg at 50% 50%, ${activeColor} ${degree}deg, ${baseColor} ${degree}deg)`;
+        }
+
+        function grantXP() {
+            let diff = document.getElementById('diff-select').value;
+            let earned = xpRewards[diff] || 0;
+            let currentXp = parseInt(localStorage.getItem('kestoXP') || '0');
+            localStorage.setItem('kestoXP', currentXp + earned);
+            updateXpRing();
         }
 
         function renderBoard() {
@@ -223,6 +284,7 @@
             const infoText = document.getElementById('info-text');
             if (currentState === targetState) {
                 isPlaying = false;
+                grantXP(); 
                 infoText.innerText = `Cleared: ${currentSteps}`;
                 infoText.style.color = "#27ae60";
             } else {
