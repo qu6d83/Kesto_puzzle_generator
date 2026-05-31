@@ -136,9 +136,9 @@
         <div id="top-bar">
             <select id="diff-select">
                 <option value="easy">Easy</option>
-                <option value="medium">Medium</option>
                 <option value="hard">Hard</option>
-                <option value="impossible">Possible</option>
+                <option value="possible">Possible</option>
+                <option value="67">67</option>
             </select>
             <button id="gen-btn" onclick="generateLevel()">Gen</button>
             <button id="restart-btn" onclick="restartLevel()" disabled>Reset</button>
@@ -174,9 +174,9 @@
 
         const xpRewards = {
             easy: 1,
-            medium: 2,
-            hard: 5,
-            impossible: 10
+            hard: 3,
+            possible: 10,
+            67: 20
         };
 
         function initBoard() {
@@ -202,20 +202,24 @@
 
             if (xp < 10) {
                 progress = xp / 10;
-                activeColor = '#00f2fe'; 
+                activeColor = '#00FFFF'; 
                 baseColor = '#2c3e50';   
             } else if (xp < 50) {
                 progress = (xp - 10) / 40;
-                activeColor = '#ff0844'; 
-                baseColor = '#00f2fe';   
+                activeColor = '#8600FF'; 
+                baseColor = '#00FFFF';   
             } else if (xp < 200) {
                 progress = (xp - 50) / 150;
-                activeColor = '#F0E426'; 
-                baseColor = '#ff0844';   
+                activeColor = '#FF0000'; 
+                baseColor = '#8600FF';   
+            } else if (xp < 1000) {
+                progress = (xp - 200) / 800;
+                activeColor = '#FFFF37'; 
+                baseColor = '#FF0000';   
             } else {
                 progress = 1;
-                activeColor = '#F0E426';
-                baseColor = '#F0E426';
+                activeColor = '#FFFF37';
+                baseColor = '#FFFF37';
             }
 
             let degree = progress * 360;
@@ -282,11 +286,19 @@
 
         function checkWinCondition() {
             const infoText = document.getElementById('info-text');
+            const diff = document.getElementById('diff-select').value;
+
             if (currentState === targetState) {
                 isPlaying = false;
-                grantXP(); 
-                infoText.innerText = `Cleared: ${currentSteps}`;
-                infoText.style.color = "#27ae60";
+                
+                if (diff === '67' && currentSteps > 40) {
+                    infoText.innerText = `Failed: >40`;
+                    infoText.style.color = "#e74c3c";
+                } else {
+                    grantXP(); 
+                    infoText.innerText = `Cleared: ${currentSteps}`;
+                    infoText.style.color = "#27ae60";
+                }
             } else {
                 infoText.innerText = currentSteps;
             }
@@ -311,7 +323,7 @@
 
             while (head < queue.length) {
                 const curr = queue[head++];
-                if (curr.p > 30) return -1; 
+                if (curr.p > 45) return -1; 
                 for (let i = 0; i < 4; i++) {
                     const nState = getNextBitboard(curr.s, dirs[i], obsS);
                     if (!visited.has(nState)) {
@@ -348,7 +360,7 @@
                 attempts++;
                 let m = Math.floor(Math.random() * 2) + 2; 
                 let k = Math.floor(Math.random() * 8) + 8; 
-                if (diffSelect === 'hard' || diffSelect === 'impossible') {
+                if (diffSelect === 'possible' || diffSelect === '67') {
                     m = Math.floor(Math.random() * 2) + 3; 
                     k = Math.floor(Math.random() * 12) + 12; 
                 }
@@ -370,9 +382,9 @@
 
                 let match = false;
                 if (diffSelect === 'easy' && pathLen > 0 && pathLen < 10) match = true;
-                else if (diffSelect === 'medium' && pathLen >= 10 && pathLen < 15) match = true;
-                else if (diffSelect === 'hard' && pathLen >= 15 && pathLen < 20) match = true;
-                else if (diffSelect === 'impossible' && pathLen >= 20) match = true;
+                else if (diffSelect === 'hard' && pathLen >= 10 && pathLen < 20) match = true;
+                else if (diffSelect === 'possible' && pathLen >= 20) match = true;
+                else if (diffSelect === '67' && pathLen >= 20) match = true;
 
                 if (match) {
                     initialState = tStart;
