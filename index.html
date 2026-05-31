@@ -28,19 +28,19 @@
         #top-bar {
             display: flex;
             align-items: center;
-            justify-content: flex-start;
+            justify-content: center;
             width: 100%;
             margin-bottom: 20px;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 8px; /* 微調：間距稍微放寬到 8px */
+            flex-wrap: nowrap; 
         }
 
         button {
-            padding: 8px 16px;
-            font-size: 16px;
+            padding: 8px 12px; /* 微調：增加上下邊距讓按鈕變高，更好觸控 */
+            font-size: 15px;   /* 微調：字體稍微放大 */
             font-weight: bold;
             border: none;
-            border-radius: 6px;
+            border-radius: 4px;
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
             background-color: #2ecc71;
@@ -56,17 +56,21 @@
         }
         button:active:not(:disabled) { transform: scale(0.96); }
 
+        #undo-btn { background-color: #f39c12; }
+        #undo-btn:hover:not(:disabled) { background-color: #d68910; }
+
         #restart-btn { background-color: #e74c3c; }
         #restart-btn:hover:not(:disabled) { background-color: #c0392b; }
 
         select {
-            padding: 8px;
-            font-size: 14px;
+            padding: 8px 6px; /* 微調：配合按鈕高度 */
+            font-size: 15px;  /* 微調：字體稍微放大 */
             border: 1px solid #bdc3c7;
-            border-radius: 6px;
+            border-radius: 4px;
             outline: none;
             background-color: white;
             cursor: pointer;
+            flex-shrink: 1;
         }
 
         #info-text {
@@ -141,6 +145,7 @@
                 <option value="67">67</option>
             </select>
             <button id="gen-btn" onclick="generateLevel()">Gen</button>
+            <button id="undo-btn" onclick="undoMove()" disabled>Undo</button>
             <button id="restart-btn" onclick="restartLevel()" disabled>Reset</button>
         </div>
 
@@ -166,6 +171,7 @@
         
         let currentSteps = 0;
         let isPlaying = false;
+        let historyStack = [];
 
         const L_WALL = 0x0101010101010101n;
         const R_WALL = 0x8080808080808080n;
@@ -277,11 +283,32 @@
             const nextState = getNextBitboard(currentState, dir, obsState);
             
             if (nextState !== currentState) {
+                historyStack.push(currentState);
+                document.getElementById('undo-btn').disabled = false;
+
                 currentState = nextState;
                 currentSteps++;
                 renderBoard();
                 checkWinCondition();
             }
+        }
+
+        function undoMove() {
+            if (historyStack.length === 0) return;
+            
+            currentState = historyStack.pop();
+            currentSteps--;
+            isPlaying = true; 
+
+            const infoText = document.getElementById('info-text');
+            infoText.style.color = "#2c3e50";
+            infoText.innerText = currentSteps;
+            
+            if (historyStack.length === 0) {
+                document.getElementById('undo-btn').disabled = true;
+            }
+            
+            renderBoard();
         }
 
         function checkWinCondition() {
@@ -309,6 +336,10 @@
             currentState = initialState;
             currentSteps = 0;
             isPlaying = true;
+            
+            historyStack = [];
+            document.getElementById('undo-btn').disabled = true;
+            
             document.getElementById('info-text').style.color = "#2c3e50";
             document.getElementById('info-text').innerText = currentSteps;
             renderBoard();
@@ -340,11 +371,13 @@
         async function generateLevel() {
             const diffSelect = document.getElementById('diff-select').value;
             const genBtn = document.getElementById('gen-btn');
+            const undoBtn = document.getElementById('undo-btn');
             const restartBtn = document.getElementById('restart-btn');
             const infoText = document.getElementById('info-text');
 
             isPlaying = false;
             genBtn.disabled = true;
+            undoBtn.disabled = true;
             restartBtn.disabled = true;
             infoText.style.color = "#2c3e50";
             infoText.style.fontSize = "20px";
