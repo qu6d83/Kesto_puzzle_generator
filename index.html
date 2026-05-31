@@ -81,6 +81,11 @@
             text-align: center;
             margin-bottom: 15px;
             letter-spacing: 2px;
+            /* 核心修復：預留固定高度並垂直置中，防止字體縮放導致盤面跳動 */
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         #board-wrapper {
@@ -174,7 +179,6 @@
         let historyStack = [];
         let levelCleared = false; 
         
-        // 新增：用於鎖定當前遊玩關卡的真正難度，防止 UI 脫鉤刷分
         let currentLevelDifficulty = 'easy';
 
         const L_WALL = 0x0101010101010101n;
@@ -238,7 +242,6 @@
         }
 
         function grantXP() {
-            // 改為讀取鎖定的難度，而非 UI 選單
             let earned = xpRewards[currentLevelDifficulty] || 0;
             let currentXp = parseInt(localStorage.getItem('kestoXP') || '0');
             localStorage.setItem('kestoXP', currentXp + earned);
@@ -317,7 +320,6 @@
 
         function checkWinCondition() {
             const infoText = document.getElementById('info-text');
-            // 改為讀取鎖定的難度進行規則判斷
             const diff = currentLevelDifficulty;
 
             if (currentState === targetState) {
@@ -434,7 +436,6 @@
                     found = true;
                     
                     levelCleared = false; 
-                    // 核心修復：將當下的難度鎖定下來
                     currentLevelDifficulty = diffSelect;
                     break;
                 }
