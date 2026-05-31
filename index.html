@@ -31,13 +31,13 @@
             justify-content: center;
             width: 100%;
             margin-bottom: 20px;
-            gap: 8px; /* 微調：間距稍微放寬到 8px */
+            gap: 8px;
             flex-wrap: nowrap; 
         }
 
         button {
-            padding: 8px 12px; /* 微調：增加上下邊距讓按鈕變高，更好觸控 */
-            font-size: 15px;   /* 微調：字體稍微放大 */
+            padding: 8px 12px;
+            font-size: 15px;
             font-weight: bold;
             border: none;
             border-radius: 4px;
@@ -63,8 +63,8 @@
         #restart-btn:hover:not(:disabled) { background-color: #c0392b; }
 
         select {
-            padding: 8px 6px; /* 微調：配合按鈕高度 */
-            font-size: 15px;  /* 微調：字體稍微放大 */
+            padding: 8px 6px;
+            font-size: 15px;
             border: 1px solid #bdc3c7;
             border-radius: 4px;
             outline: none;
@@ -172,6 +172,10 @@
         let currentSteps = 0;
         let isPlaying = false;
         let historyStack = [];
+        let levelCleared = false; 
+        
+        // 新增：用於鎖定當前遊玩關卡的真正難度，防止 UI 脫鉤刷分
+        let currentLevelDifficulty = 'easy';
 
         const L_WALL = 0x0101010101010101n;
         const R_WALL = 0x8080808080808080n;
@@ -234,8 +238,8 @@
         }
 
         function grantXP() {
-            let diff = document.getElementById('diff-select').value;
-            let earned = xpRewards[diff] || 0;
+            // 改為讀取鎖定的難度，而非 UI 選單
+            let earned = xpRewards[currentLevelDifficulty] || 0;
             let currentXp = parseInt(localStorage.getItem('kestoXP') || '0');
             localStorage.setItem('kestoXP', currentXp + earned);
             updateXpRing();
@@ -313,7 +317,8 @@
 
         function checkWinCondition() {
             const infoText = document.getElementById('info-text');
-            const diff = document.getElementById('diff-select').value;
+            // 改為讀取鎖定的難度進行規則判斷
+            const diff = currentLevelDifficulty;
 
             if (currentState === targetState) {
                 isPlaying = false;
@@ -322,7 +327,10 @@
                     infoText.innerText = `Failed: >40`;
                     infoText.style.color = "#e74c3c";
                 } else {
-                    grantXP(); 
+                    if (!levelCleared) {
+                        grantXP(); 
+                        levelCleared = true; 
+                    }
                     infoText.innerText = `Cleared: ${currentSteps}`;
                     infoText.style.color = "#27ae60";
                 }
@@ -424,6 +432,10 @@
                     targetState = tTarget;
                     obsState = tObs;
                     found = true;
+                    
+                    levelCleared = false; 
+                    // 核心修復：將當下的難度鎖定下來
+                    currentLevelDifficulty = diffSelect;
                     break;
                 }
             }
