@@ -27,20 +27,28 @@
 
         #top-bar {
             display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+            margin-bottom: 20px;
+            gap: 16px; 
+        }
+
+        .control-row {
+            display: flex;
             align-items: center;
             justify-content: center;
             width: 100%;
-            margin-bottom: 20px;
-            gap: 8px;
-            flex-wrap: nowrap; 
+            gap: 12px; 
+            flex-wrap: nowrap;
         }
 
         button {
-            padding: 8px 12px;
-            font-size: 15px;
+            padding: 12px 24px; 
+            font-size: 18px;    
             font-weight: bold;
             border: none;
-            border-radius: 4px;
+            border-radius: 8px; 
             cursor: pointer;
             transition: background 0.2s, transform 0.1s;
             background-color: #2ecc71;
@@ -56,6 +64,9 @@
         }
         button:active:not(:disabled) { transform: scale(0.96); }
 
+        #ans-btn { background-color: #3498db; }
+        #ans-btn:hover:not(:disabled) { background-color: #2980b9; }
+
         #undo-btn { background-color: #f39c12; }
         #undo-btn:hover:not(:disabled) { background-color: #d68910; }
 
@@ -63,10 +74,10 @@
         #restart-btn:hover:not(:disabled) { background-color: #c0392b; }
 
         select {
-            padding: 8px 6px;
-            font-size: 15px;
+            padding: 12px 12px; 
+            font-size: 18px;    
             border: 1px solid #bdc3c7;
-            border-radius: 4px;
+            border-radius: 8px;
             outline: none;
             background-color: white;
             cursor: pointer;
@@ -81,7 +92,6 @@
             text-align: center;
             margin-bottom: 15px;
             letter-spacing: 2px;
-            /* 核心修復：預留固定高度並垂直置中，防止字體縮放導致盤面跳動 */
             height: 48px;
             display: flex;
             align-items: center;
@@ -143,15 +153,20 @@
 
     <div id="game-container">
         <div id="top-bar">
-            <select id="diff-select">
-                <option value="easy">Easy</option>
-                <option value="hard">Hard</option>
-                <option value="possible">Possible</option>
-                <option value="67">67</option>
-            </select>
-            <button id="gen-btn" onclick="generateLevel()">Gen</button>
-            <button id="undo-btn" onclick="undoMove()" disabled>Undo</button>
-            <button id="restart-btn" onclick="restartLevel()" disabled>Reset</button>
+            <div class="control-row">
+                <select id="diff-select">
+                    <option value="easy">Easy</option>
+                    <option value="hard">Hard</option>
+                    <option value="possible">Possible</option>
+                    <option value="67">67</option>
+                </select>
+                <button id="gen-btn" onclick="generateLevel()">Gen</button>
+                <button id="ans-btn" onclick="showAnswer()" disabled>Ans</button>
+            </div>
+            <div class="control-row">
+                <button id="undo-btn" onclick="undoMove()" disabled>Undo</button>
+                <button id="restart-btn" onclick="restartLevel()" disabled>Reset</button>
+            </div>
         </div>
 
         <div id="info-text">-</div>
@@ -324,10 +339,12 @@
 
             if (currentState === targetState) {
                 isPlaying = false;
+                document.getElementById('ans-btn').disabled = true;
                 
                 if (diff === '67' && currentSteps > 40) {
                     infoText.innerText = `Failed: >40`;
                     infoText.style.color = "#e74c3c";
+                    document.getElementById('ans-btn').disabled = false; 
                 } else {
                     if (!levelCleared) {
                         grantXP(); 
@@ -349,6 +366,7 @@
             
             historyStack = [];
             document.getElementById('undo-btn').disabled = true;
+            document.getElementById('ans-btn').disabled = false;
             
             document.getElementById('info-text').style.color = "#2c3e50";
             document.getElementById('info-text').innerText = currentSteps;
@@ -378,17 +396,103 @@
             return -1;
         }
 
+        function solveForAns(startS, targetS, obsS) {
+            if (startS === targetS) return "";
+            const queue = [{ s: startS, p: "" }];
+            const visited = new Set([startS]);
+            let head = 0;
+            const dirs = ['u', 'd', 'l', 'r'];
+
+            while (head < queue.length) {
+                const curr = queue[head++];
+                if (curr.p.length > 45) return null; 
+                for (let i = 0; i < 4; i++) {
+                    const d = dirs[i];
+                    const nState = getNextBitboard(curr.s, d, obsS);
+                    if (!visited.has(nState)) {
+                        const nPath = curr.p + d;
+                        if (nState === targetS) return nPath;
+                        visited.add(nState);
+                        queue.push({ s: nState, p: nPath });
+                    }
+                }
+            }
+            return null;
+        }
+
+        function showAnswer() {
+            isPlaying = false; 
+            levelCleared = true; 
+
+            document.getElementById('gen-btn').disabled = true;
+            document.getElementById('ans-btn').disabled = true;
+            document.getElementById('undo-btn').disabled = true;
+            document.getElementById('restart-btn').disabled = true;
+            document.getElementById('diff-select').disabled = true;
+
+            const infoText = document.getElementById('info-text');
+            infoText.style.color = "#f39c12";
+            infoText.style.fontSize = "24px";
+            infoText.innerText = "Auto Solving...";
+
+            setTimeout(() => {
+                const path = solveForAns(currentState, targetState, obsState);
+                if (path === null) {
+                    infoText.innerText = "Error: No Path";
+                    document.getElementById('gen-btn').disabled = false;
+                    document.getElementById('diff-select').disabled = false;
+                    return;
+                }
+
+                let stepIdx = 0;
+                function nextAnsStep() {
+                    if (stepIdx < path.length) {
+                        const move = path[stepIdx];
+                        currentState = getNextBitboard(currentState, move, obsState);
+                        currentSteps++;
+                        renderBoard();
+                        stepIdx++;
+                        setTimeout(nextAnsStep, 400); 
+                    } else {
+                        infoText.style.fontSize = "36px";
+                        infoText.innerText = "Auto Solved";
+                        infoText.style.color = "#95a5a6";
+                        
+                        // 確保 Ans 播完後維持灰色禁用，只開放 Gen 與選單
+                        document.getElementById('gen-btn').disabled = false;
+                        document.getElementById('diff-select').disabled = false;
+                    }
+                }
+                
+                if (path.length > 0) {
+                    nextAnsStep();
+                } else {
+                    infoText.style.fontSize = "36px";
+                    infoText.innerText = "Auto Solved";
+                    
+                    // 確保 Ans 播完後維持灰色禁用，只開放 Gen 與選單
+                    document.getElementById('gen-btn').disabled = false;
+                    document.getElementById('diff-select').disabled = false;
+                }
+            }, 50);
+        }
+
         async function generateLevel() {
             const diffSelect = document.getElementById('diff-select').value;
             const genBtn = document.getElementById('gen-btn');
+            const ansBtn = document.getElementById('ans-btn');
             const undoBtn = document.getElementById('undo-btn');
             const restartBtn = document.getElementById('restart-btn');
+            const diffSelectElem = document.getElementById('diff-select');
             const infoText = document.getElementById('info-text');
 
             isPlaying = false;
             genBtn.disabled = true;
+            ansBtn.disabled = true;
             undoBtn.disabled = true;
             restartBtn.disabled = true;
+            diffSelectElem.disabled = true;
+            
             infoText.style.color = "#2c3e50";
             infoText.style.fontSize = "20px";
             infoText.innerText = "Generating...";
@@ -445,10 +549,12 @@
             if (found) {
                 restartLevel(); 
                 restartBtn.disabled = false;
+                ansBtn.disabled = false;
             } else {
                 infoText.innerText = "Timeout!";
             }
             genBtn.disabled = false;
+            diffSelectElem.disabled = false;
         }
 
         window.addEventListener('keydown', e => {
